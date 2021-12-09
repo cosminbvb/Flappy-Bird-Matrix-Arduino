@@ -54,7 +54,7 @@ const int d5 = 4;
 const int d6 = 3;
 const int d7 = 2;
 
-LiquidCrystal lcd(RS,enable,d4,d5,d6,d7);
+LiquidCrystal lcd(RS, enable, d4, d5, d6, d7);
 
 
 /****** GAME LOGIC ******/
@@ -101,15 +101,17 @@ unsigned long countdownStartTime;
 bool blinkState;
 bool countdownStarted = false;
 
+const int buzzerPin = 9;
+
 unsigned long score = 0; // score increases with each obstacle
 
 
 /****** LEADERBOARD ******/
 
 class Player {
-public:
-  char name[10];
-  unsigned long score;
+  public:
+    char name[10];
+    unsigned long score;
 };
 
 Player player;
@@ -132,13 +134,13 @@ bool joyMovedPositionSelection = false;
 
 const String menu[4] = {"Play", "Highscore", "Settings", "About"};
 byte menuIndex = 0;     // index of the displayed option
-bool selected = false;  
+bool selected = false;
 
 
 
 void setup() {
   Serial.begin(9600);
-                                        // the zero refers to the MAX7219 number, it is zero for 1 chip
+  // the zero refers to the MAX7219 number, it is zero for 1 chip
   lc.shutdown(0, false);                // turn off power saving, enables display
   lc.setIntensity(0, matrixBrightness); // sets brightness (0~15 possible values)
   lc.clearDisplay(0);                   // clear screen
@@ -148,19 +150,21 @@ void setup() {
   pinMode(yPin, INPUT);
   pinMode(swPin, INPUT_PULLUP);
   pinMode(flapButtonPin, INPUT_PULLUP);
+  pinMode(buzzerPin, OUTPUT);
 
-  lcd.begin(16,2);  // set up the LCD's number of columns and rows:
+  lcd.begin(16, 2); // set up the LCD's number of columns and rows:
 
   // initializeLeaderboardEEPROM(); // TODO: initialize if empty
   getLeaderboardFromEEPROM();       // read the top 3 players from memory
 }
 
-void loop() { 
+void loop() {
   if (runningGame) {
     // if runningGame == true => user is playing flappy bird
     readFlap(); // button press listener
     if (registeredFlap) {
       flaps++;  // every time a user presses the button, we increase the number of queued flaps
+      tone(buzzerPin, 6000, 50);
     }
     handleBirdMovement();  // moves the bird vertically
     handleMapMovement();   // moves the map (aka bird pov) to the left and increases the current score
@@ -218,10 +222,8 @@ void getPlayerName() {
   }
   lcd.setCursor(1, 1);
   lcd.print("Click to Save");
-  readJoystickSw();
-  if (selected) {
-    nameEntered = true;
-    selected = false;
+  readJoystickSw(nameEntered);
+  if (nameEntered) {
     // clear underscores
     for (int i = 0; i <= 9; i++) {
       if (playerName[i] == '_') {
@@ -288,7 +290,7 @@ void selectLetterPosition() {
 
   if (yValue >= minThreshold && yValue <= maxThreshold) {
     joyMovedPositionSelection = false;
-  }  
+  }
 }
 
 void handleMenu() {
@@ -301,17 +303,18 @@ void handleMenu() {
 }
 
 void handleMenuClick() {
+  Serial.println(selected);
   // calls the right function for each selected option
   if (!selected) {
-    readJoystickSw();
+    readJoystickSw(selected);
   }
   if (selected) {
-    switch(menuIndex) {
+    switch (menuIndex) {
       case 0:
         handlePlay();
         break;
       case 1:
-        //handleHighscore();
+        handleHighscore();
         selected = false;
         break;
       case 2:
@@ -326,7 +329,13 @@ void handleMenuClick() {
   }
 }
 
-void readJoystickSw() {
+void handleHighscore() {
+  // TODO
+  int a = 1;
+}
+
+void readJoystickSw(bool &selected) {
+  // sets selected to high if the user pressed down on the joystick
   reading = !digitalRead(swPin);
   // If the switch changed, due to noise or pressing:
   if (reading != lastSwState) {
@@ -338,7 +347,6 @@ void readJoystickSw() {
     // delay, so take it as the actual current state:
     if (reading != swState) {
       swState = reading;
-
       if (swState == HIGH) {
         selected = true;
       }
@@ -379,7 +387,7 @@ void backToMenu() {
   // if the user presses down on the joystick
   // we return the him to the menu state (by setting gameOver = false)
   // and we display the first menu option
-  readJoystickSw();
+  readJoystickSw(selected);
   if (selected) {
     selected = false;
     lcd.clear();
@@ -415,7 +423,7 @@ void handlePlay() {
 # pragma region LEADERBOARD
 
 /*
-void initializeLeaderboardEEPROM() {
+  void initializeLeaderboardEEPROM() {
   for (int i = 0; i < 3; i++) {
     Player player;
     strcpy(player.name, "Unknown");
@@ -423,7 +431,7 @@ void initializeLeaderboardEEPROM() {
     EEPROM.put(eepromAddress, player);
     eepromAddress += sizeof(Player);
   }
-}
+  }
 */
 
 void getLeaderboardFromEEPROM() {
@@ -444,7 +452,7 @@ int getLeaderboardPosition(int score) {
   }
   else if (score > leaderboard[0].score) {
     // first place
-    return 0; 
+    return 0;
   }
   else if (score > leaderboard[1].score) {
     // second place
@@ -571,7 +579,7 @@ void handleBirdMovement() {
       }
       lc.setLed(0, birdRow, birdCol, true);
       lastBirdMove = millis();
-    } 
+    }
   }
   else {
     // decrease height by 1
@@ -585,7 +593,7 @@ void handleBirdMovement() {
       }
       lc.setLed(0, birdRow, birdCol, true);
       lastBirdMove = millis();
-    } 
+    }
   }
 
 }
@@ -608,7 +616,7 @@ void readFlap() {
     else {
       registeredFlap = false;
     }
-    
+
     if (reading != buttonState) {
       buttonState = reading;
     }
@@ -627,8 +635,8 @@ void handleMapMovement() {
 
 void getRandomObstacle() {
   // initialize the seed of the rng with the value of miliseconds
-  // plus the value read by an unconnected pin 
-  randomSeed(millis() + analogRead(randomPin));  
+  // plus the value read by an unconnected pin
+  randomSeed(millis() + analogRead(randomPin));
   gapStart = random(0, 4);  // generate random a gap starting point
   gapLength = random(3, 6); // and random a gap size
 }
@@ -637,10 +645,10 @@ void shiftMatrix() {
   // shift matrix to the left
   for (int i = 0; i < matrixSize; i++) {
     for (int j = 0; j < matrixSize - 1; j++) {
-      matrix[i][j] = matrix[i][j+1]; 
+      matrix[i][j] = matrix[i][j + 1];
     }
     matrix[i][matrixSize - 1] = 0;
-  }  
+  }
 }
 
 void generateObstacle() {
