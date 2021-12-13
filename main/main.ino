@@ -36,8 +36,8 @@ const int swPin = 8;
 int xValue = 0;
 int yValue = 0;
 bool joyMoved = true;
-bool swState;
-bool lastSwState;
+bool swState = LOW;
+bool lastSwState = LOW;
 
 const int minThreshold = 350;
 const int maxThreshold = 700;
@@ -133,10 +133,10 @@ bool joyMovedPositionSelection = false;
 /****** MENU ******/
 
 const String menu[4] = {"Play", "Highscore", "Settings", "About"};
-byte menuIndex = 0;     // index of the displayed option
-bool selected = false;
+int menuIndex = 0;     // index of the displayed option
 
-
+bool goToOption = false;
+bool goToMenu = false;
 
 void setup() {
   Serial.begin(9600);
@@ -159,48 +159,13 @@ void setup() {
 }
 
 void loop() {
-  if (runningGame) {
-    // if runningGame == true => user is playing flappy bird
-    readFlap(); // button press listener
-    if (registeredFlap) {
-      flaps++;  // every time a user presses the button, we increase the number of queued flaps
-      tone(buzzerPin, 6000, 50);
-    }
-    handleBirdMovement();  // moves the bird vertically
-    handleMapMovement();   // moves the map (aka bird pov) to the left and increases the current score
-    checkCollision();      // ends the game if the bird hit an obstacle
-    showLiveScore();       // displays a live score on the lcd
+  // if nameEntered == false => wait for the user to enter a name
+  // Serial.println(nameEntered);
+  if (!nameEntered) {
+    getPlayerName();
   }
   else {
-    // if running game == false => user is in the menu
-    // if nameEntered == false => wait for the user to enter a name
-    if (!nameEntered) {
-      getPlayerName();
-    }
-    else {
-      // if nameEntered == true => user entered his name
-      if (gameOver) {
-        // if gameOver == true, the game just ended, meaning that
-        // we need to show a crash animation for a few seconds and then
-        // analize the score, store it and display the position he finished in
-        if (millis() - gameOverTime < gameOverAnimationDuration) {
-          collisionAnimation();
-        }
-        else {
-          if (!registeredScore) {
-            // registering only once
-            registerScore(); //TODO: split into store and show
-          }
-          resetGame();   // reset map, bird and score
-          backToMenu();  // if the user presses down on the joystick, we return him to the menu
-        }
-      }
-      else {
-        // if gameOver == false => user hasn't player yet,
-        // or we already finished post game processing
-        handleMenu();
-      }
-    }
+    handleMenu();
   }
 }
 
@@ -298,62 +263,12 @@ void handleMenu() {
     lcd.clear();
     lcd.print(menu[menuIndex]);
   }
-  handleMenuVerticalMovement();
+  if (!goToOption) {
+    // only listen for vertical menu movement when
+    // no menu option is currently in process
+    handleMenuVerticalMovement();
+  }
   handleMenuClick();
-}
-
-void handleMenuClick() {
-  Serial.println(selected);
-  // calls the right function for each selected option
-  if (!selected) {
-    readJoystickSw(selected);
-  }
-  if (selected) {
-    switch (menuIndex) {
-      case 0:
-        handlePlay();
-        break;
-      case 1:
-        handleHighscore();
-        selected = false;
-        break;
-      case 2:
-        //handleSettings();
-        selected = false;
-        break;
-      case 3:
-        //handleAbout();
-        selected = false;
-        break;
-    }
-  }
-}
-
-void handleHighscore() {
-  // TODO
-  int a = 1;
-}
-
-void readJoystickSw(bool &selected) {
-  // sets selected to high if the user pressed down on the joystick
-  reading = !digitalRead(swPin);
-  // If the switch changed, due to noise or pressing:
-  if (reading != lastSwState) {
-    // reset the debouncing timer
-    lastSwDebounceTime = millis();
-  }
-  if ((millis() - lastSwDebounceTime) > debounceDelay) {
-    // whatever the reading is at, it's been there for longer than the debounce
-    // delay, so take it as the actual current state:
-    if (reading != swState) {
-      swState = reading;
-      if (swState == HIGH) {
-        selected = true;
-      }
-    }
-  }
-  // save the reading. Next time through the loop, it'll be the lastButtonState:
-  lastSwState = reading;
 }
 
 void handleMenuVerticalMovement() {
@@ -383,38 +298,122 @@ void handleMenuVerticalMovement() {
   }
 }
 
+void handleMenuClick() {
+  // calls the right function for each selected option
+  if (!goToOption) {
+    readJoystickSw(goToOption);
+  }
+  if (goToOption) {
+    switch (menuIndex) {
+      case 0:
+        handlePlay();
+        break;
+      case 1:
+        handleHighscore();
+        break;
+      case 2:
+        //handleSettings();
+        break;
+      case 3:
+        //handleAbout();
+        break;
+    }
+  }
+}
+
+void handleHighscore() {
+  // TODO
+  int a = 1;
+}
+
+void readJoystickSw(bool &pressed) {
+  // sets pressed to high if the user pressed down on the joystick
+  reading = !digitalRead(swPin);
+  // If the switch changed, due to noise or pressing:
+  if (reading != lastSwState) {
+    // reset the debouncing timer
+    lastSwDebounceTime = millis();
+  }
+  if ((millis() - lastSwDebounceTime) > debounceDelay) {
+    // whatever the reading is at, it's been there for longer than the debounce
+    // delay, so take it as the actual current state:
+    if (reading != swState) {
+      swState = reading;
+      if (swState == HIGH) {
+        pressed = true;
+      }
+    }
+  }
+  // save the reading. Next time through the loop, it'll be the lastButtonState:
+  lastSwState = reading;
+}
+
 void backToMenu() {
   // if the user presses down on the joystick
-  // we return the him to the menu state (by setting gameOver = false)
+  // we return the him to the menu state
   // and we display the first menu option
-  readJoystickSw(selected);
-  if (selected) {
-    selected = false;
-    lcd.clear();
+  readJoystickSw(goToMenu);
+  if (goToMenu) {
+    goToOption = false;         // menu option satisfied
+    lcd.clear();                
     lcd.setCursor(0, 0);
-    lcd.print(menu[menuIndex]);
-    gameOver = false;
-    registeredScore = false;
+    lcd.print(menu[menuIndex]); // display the current menu option
+    gameOver = false;           // mark post game processing as done
+    registeredScore = false;    // reset the flag for the next game
+    goToMenu = false;           // back to menu command completed
   }
 }
 
 void handlePlay() {
-  if (!countdownStarted)
-  {
-    // starting a 3 second countdown
-    countdownStartTime = millis();
-    countdownStarted = true;
+  if (!runningGame && !gameOver) {
+    // if the game is not running
+    // and we don't have any post game processing to do (gameOver == false)
+
+    if (!countdownStarted)
+    {
+      // starting a 3 second countdown
+      countdownStartTime = millis();
+      countdownStarted = true;
+    }
+    if (millis() - countdownStartTime < 3000) {
+      // display the countdown on the matrix
+      displayCountdown();
+    }
+    else {
+      // when the countdown is over, start the game
+      countdownStarted = false;
+      runningGame = true;
+      lc.setLed(0, birdRow, birdCol, true);  // display bird
+    }
   }
-  if (millis() - countdownStartTime < 3000) {
-    // display the countdown on the matrix
-    displayCountdown();
+  if (runningGame && !gameOver) {
+    // if the game is running 
+    // and we don't have any post game processing to do (gameOver == false)
+    readFlap(); // button press listener
+    if (registeredFlap) {
+      flaps++;  // every time a user presses the button, we increase the number of queued flaps
+      // tone(buzzerPin, 6000, 50);
+    }
+    handleBirdMovement();  // moves the bird vertically
+    handleMapMovement();   // moves the map (aka bird pov) to the left and increases the current score
+    checkCollision();      // ends the game if the bird hit an obstacle
+    showLiveScore();       // displays a live score on the lcd
   }
-  else {
-    // when the countdown is over, start the game
-    countdownStarted = false;
-    runningGame = true;
-    lc.setLed(0, birdRow, birdCol, true);  // display bird
-    selected = false;
+  if (gameOver) {
+    // if gameOver == true, the game just ended, meaning that
+    // we need to show a crash animation for a few seconds and then
+    // analize the score, store it and display the position he finished in
+    if (millis() - gameOverTime < gameOverAnimationDuration) {
+      collisionAnimation();
+    }
+    else {
+      if (!registeredScore) {
+        // registering only once
+        registerScore(); // TODO: split into store and show
+      }
+      resetGame();   // reset map, bird and score
+      backToMenu();  // if the user presses down on the joystick, we return him to the menu
+    }
   }
 }
 
