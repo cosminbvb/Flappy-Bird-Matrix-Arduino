@@ -12,7 +12,7 @@ const int matrixSize = 8;
 
 LedControl lc = LedControl(dinPin, clockPin, loadPin, 1); //DIN, CLK, LOAD, No. DRIVER
 
-byte matrixBrightness = 2;
+int matrixBrightness = 2;
 unsigned long long lastMoved = 0;
 bool matrixChanged = true;
 bool matrix[matrixSize][matrixSize] = {
@@ -31,7 +31,7 @@ bool matrix[matrixSize][matrixSize] = {
 
 const int xPin = A0;
 const int yPin = A1;
-const int swPin = 8;
+const int swPin = A4;
 
 int xValue = 0;
 int yValue = 0;
@@ -48,11 +48,16 @@ unsigned long lastSwDebounceTime;
 /****** LCD ******/
 
 const int RS = 7;
-const int enable = 6;
+const int enable = 8;
 const int d4 = 5;
 const int d5 = 4;
 const int d6 = 3;
 const int d7 = 2;
+const int lcdContrastPin = 6;
+const int lcdBrightnessPin = 9;
+
+int lcdContrast = 90;
+int lcdBrightness = 128;
 
 LiquidCrystal lcd(RS, enable, d4, d5, d6, d7);
 
@@ -63,7 +68,7 @@ bool runningGame = false;
 bool gameOver = false;
 
 // Flap mechanic
-const byte flapButtonPin = 13;
+const byte flapButtonPin = A5;
 bool buttonState;
 bool lastButtonState;
 bool reading;
@@ -101,7 +106,7 @@ unsigned long countdownStartTime;
 bool blinkState;
 bool countdownStarted = false;
 
-const int buzzerPin = 9;
+const int buzzerPin = 13;
 
 unsigned long score = 0; // score increases with each obstacle
 
@@ -134,9 +139,30 @@ bool joyMovedPositionSelection = false;
 
 const String menu[4] = {"Play", "Highscore", "Settings", "About"};
 int menuIndex = 0;     // index of the displayed option
-
 bool goToOption = false;
 bool goToMenu = false;
+
+// about section
+const String aboutFirstRow = "Flappy Bird On LED Matrix - Cosmin Petrescu";
+byte stringIndex = 0;
+const String aboutSecondRow = "GitHub:cosminbvb";
+const int aboutShiftInterval = 500;
+unsigned long lastAboutShiftTime;
+
+// highscore section
+byte highscoreIndex = 0;
+byte highscoreMaxIndex = 2;
+bool joyMovedHighscore = false;
+bool showHighscore = true;
+
+// settings section
+byte settingsIndex = 0;
+byte settingsMaxIndex = 2;
+bool joyMovedSettings = false;
+bool joyMovedIntensity = false;
+bool showSettings = true;
+
+int lastMatrixBrightness;
 
 void setup() {
   Serial.begin(9600);
@@ -151,6 +177,11 @@ void setup() {
   pinMode(swPin, INPUT_PULLUP);
   pinMode(flapButtonPin, INPUT_PULLUP);
   pinMode(buzzerPin, OUTPUT);
+  pinMode(lcdContrastPin, OUTPUT);
+  pinMode(lcdBrightnessPin, OUTPUT);
+
+  analogWrite(lcdContrastPin, lcdContrast);
+  analogWrite(lcdBrightnessPin, lcdBrightness);
 
   lcd.begin(16, 2); // set up the LCD's number of columns and rows:
 
@@ -167,6 +198,7 @@ void loop() {
   else {
     handleMenu();
   }
+  // analogWrite(contrastPin, 90);
 }
 
 
@@ -312,18 +344,239 @@ void handleMenuClick() {
         handleHighscore();
         break;
       case 2:
-        //handleSettings();
+        handleSettings();
         break;
       case 3:
-        //handleAbout();
+        handleAbout();
         break;
     }
   }
 }
 
+void handlePlay() {
+  if (!runningGame && !gameOver) {
+    // if the game is not running
+    // and we don't have any post game processing to do (gameOver == false)
+
+    if (!countdownStarted)
+    {
+      // starting a 3 second countdown
+      countdownStartTime = millis();
+      countdownStarted = true;
+    }
+    if (millis() - countdownStartTime < 3000) {
+      // display the countdown on the matrix
+      displayCountdown();
+    }
+    else {
+      // when the countdown is over, start the game
+      countdownStarted = false;
+      runningGame = true;
+      lc.setLed(0, birdRow, birdCol, true);  // display bird
+    }
+  }
+  if (runningGame && !gameOver) {
+    // if the game is running 
+    // and we don't have any post game processing to do (gameOver == false)
+    readFlap(); // button press listener
+    if (registeredFlap) {
+      flaps++;  // every time a user presses the button, we increase the number of queued flaps
+      tone(buzzerPin, 6000, 50);
+    }
+    handleBirdMovement();  // moves the bird vertically
+    handleMapMovement();   // moves the map (aka bird pov) to the left and increases the current score
+    checkCollision();      // ends the game if the bird hit an obstacle
+    showLiveScore();       // displays a live score on the lcd
+  }
+  if (gameOver) {
+    // if gameOver == true, the game just ended, meaning that
+    // we need to show a crash animation for a few seconds and then
+    // analize the score, store it and display the position he finished in
+    if (millis() - gameOverTime < gameOverAnimationDuration) {
+      collisionAnimation();
+    }
+    else {
+      if (!registeredScore) {
+        // registering only once
+        registerScore(); // TODO: split into store and show
+      }
+      resetGame();   // reset map, bird and score
+      backToMenu();  // if the user presses down on the joystick, we return him to the menu
+    }
+  }
+}
+
 void handleHighscore() {
-  // TODO
-  int a = 1;
+  if (showHighscore) {
+    lcd.clear();
+    lcd.setCursor(0, 0);
+    lcd.print(highscoreIndex + 1);
+    lcd.print(".");
+    for (int i = 0; i < 10; i++) {
+      lcd.setCursor(i + 3, 0);
+      lcd.print(leaderboard[highscoreIndex].name[i]);
+    }
+    lcd.setCursor(3, 1);
+    lcd.print("Score: ");
+    lcd.setCursor(10, 1);
+    lcd.print(leaderboard[highscoreIndex].score);
+    showHighscore = false;
+  }
+  handleHighscoreVerticalMovement();
+  backToMenu();
+}
+
+void handleHighscoreVerticalMovement() {
+  xValue = analogRead(xPin);
+  if (xValue > maxThreshold && !joyMovedHighscore) {
+    if (highscoreIndex > 0) {
+      highscoreIndex--;
+    }
+    else {
+      highscoreIndex = highscoreMaxIndex;
+    }
+    joyMovedHighscore = true;
+    showHighscore = true;
+  }
+
+  if (xValue < minThreshold && !joyMovedHighscore) {
+    if (highscoreIndex < highscoreMaxIndex) {
+      highscoreIndex++;
+    }
+    else {
+      highscoreIndex = 0;
+    }
+    joyMovedHighscore = true;
+    showHighscore = true;
+  }
+
+  if (xValue >= minThreshold && xValue <= maxThreshold) {
+    joyMovedHighscore = false;
+  }
+}
+
+void handleSettings() {
+  if (showSettings) {
+    lcd.clear();
+    lcd.setCursor(0, 0);
+    switch (settingsIndex) {
+      case 0:
+        lcd.print("LEDs Brightness");
+        break;
+      case 1:
+        lcd.print("LCD Contrast");
+        break;
+      case 2:
+        lcd.print("LCD Brightness");
+        break;
+    }
+    showSettings = false;
+  }
+  switch (settingsIndex) {
+    case 0:
+      for (int row = 0; row < matrixSize; row++) {
+        for (int col = 0; col < matrixSize; col++) {
+          lc.setLed(0, row, col, 1);
+        }
+      }
+      handleSettingsHorizontalMovement(matrixBrightness, 15, 1);
+      lc.setIntensity(0, matrixBrightness);
+      lcd.setCursor(6, 1);
+      lcd.print("<");
+      lcd.print(matrixBrightness);
+      lcd.print(">");
+      break;
+    case 1:
+      handleSettingsHorizontalMovement(lcdContrast, 255, 10);
+      analogWrite(lcdContrastPin, lcdContrast);
+      lcd.setCursor(6, 1);
+      lcd.print("<");
+      lcd.print(lcdContrast);
+      lcd.print(">");
+      break;
+    case 2:
+      handleSettingsHorizontalMovement(lcdBrightness, 255, 30);
+      analogWrite(lcdBrightnessPin, lcdBrightness);
+      lcd.setCursor(6, 1);
+      lcd.print("<");
+      lcd.print(lcdBrightness);
+      lcd.print(">");
+      break;
+  }
+  handleSettingsVerticalMovement();
+  backToMenu();
+}
+
+void handleSettingsVerticalMovement() {
+  xValue = analogRead(xPin);
+  if (xValue > maxThreshold && !joyMovedSettings) {
+    if (settingsIndex > 0) {
+      settingsIndex--;
+    }
+    else {
+      settingsIndex = settingsMaxIndex;
+    }
+    joyMovedSettings = true;
+    showSettings = true;
+  }
+
+  if (xValue < minThreshold && !joyMovedSettings) {
+    if (settingsIndex < settingsMaxIndex) {
+      settingsIndex++;
+    }
+    else {
+      settingsIndex = 0;
+    }
+    joyMovedSettings = true;
+    showSettings = true;
+  }
+
+  if (xValue >= minThreshold && xValue <= maxThreshold) {
+    joyMovedSettings = false;
+  }
+}
+
+void handleSettingsHorizontalMovement(int &intensity, int maxIntensity, int step) {
+  yValue = analogRead(yPin);
+  if (yValue < minThreshold && !joyMovedIntensity) {
+    if (intensity >= step) {
+      intensity -= step;
+    }
+    else {
+      intensity = maxIntensity;
+    }
+    joyMovedIntensity = true;
+    showSettings = true;
+  }
+  if (yValue > maxThreshold && !joyMovedIntensity) {
+    if (intensity <= maxIntensity - step) {
+      intensity += step;
+    }
+    else {
+      intensity = 0;
+    }
+    joyMovedIntensity = true;
+    showSettings = true;
+  }
+
+  if (yValue >= minThreshold && yValue <= maxThreshold) {
+    joyMovedIntensity = false;
+  } 
+}
+
+void handleAbout() {
+  if ((millis() - lastAboutShiftTime) > aboutShiftInterval) {
+    lcd.setCursor(0, 0);
+    lcd.print(aboutFirstRow.substring(stringIndex, stringIndex + 16));
+    lcd.setCursor(0, 1);
+    lcd.print(aboutSecondRow);
+    stringIndex += 1;
+    if (stringIndex > (aboutFirstRow.length() - 16)) {
+      stringIndex = 0;
+    }
+    lastAboutShiftTime = millis();
+  }
+  backToMenu();
 }
 
 void readJoystickSw(bool &pressed) {
@@ -359,61 +612,10 @@ void backToMenu() {
     lcd.setCursor(0, 0);
     lcd.print(menu[menuIndex]); // display the current menu option
     gameOver = false;           // mark post game processing as done
-    registeredScore = false;    // reset the flag for the next game
     goToMenu = false;           // back to menu command completed
-  }
-}
-
-void handlePlay() {
-  if (!runningGame && !gameOver) {
-    // if the game is not running
-    // and we don't have any post game processing to do (gameOver == false)
-
-    if (!countdownStarted)
-    {
-      // starting a 3 second countdown
-      countdownStartTime = millis();
-      countdownStarted = true;
-    }
-    if (millis() - countdownStartTime < 3000) {
-      // display the countdown on the matrix
-      displayCountdown();
-    }
-    else {
-      // when the countdown is over, start the game
-      countdownStarted = false;
-      runningGame = true;
-      lc.setLed(0, birdRow, birdCol, true);  // display bird
-    }
-  }
-  if (runningGame && !gameOver) {
-    // if the game is running 
-    // and we don't have any post game processing to do (gameOver == false)
-    readFlap(); // button press listener
-    if (registeredFlap) {
-      flaps++;  // every time a user presses the button, we increase the number of queued flaps
-      // tone(buzzerPin, 6000, 50);
-    }
-    handleBirdMovement();  // moves the bird vertically
-    handleMapMovement();   // moves the map (aka bird pov) to the left and increases the current score
-    checkCollision();      // ends the game if the bird hit an obstacle
-    showLiveScore();       // displays a live score on the lcd
-  }
-  if (gameOver) {
-    // if gameOver == true, the game just ended, meaning that
-    // we need to show a crash animation for a few seconds and then
-    // analize the score, store it and display the position he finished in
-    if (millis() - gameOverTime < gameOverAnimationDuration) {
-      collisionAnimation();
-    }
-    else {
-      if (!registeredScore) {
-        // registering only once
-        registerScore(); // TODO: split into store and show
-      }
-      resetGame();   // reset map, bird and score
-      backToMenu();  // if the user presses down on the joystick, we return him to the menu
-    }
+    registeredScore = false;    // reset the flag for the next game
+    showHighscore = true;       // reset the flag for the next highscore access
+    showSettings = true;        // reset the flag for the next settings acess
   }
 }
 
