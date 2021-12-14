@@ -13,6 +13,7 @@ const int matrixSize = 8;
 LedControl lc = LedControl(dinPin, clockPin, loadPin, 1); //DIN, CLK, LOAD, No. DRIVER
 
 int matrixBrightness = 2;
+int lastMatrixBrightness;
 unsigned long long lastMoved = 0;
 bool matrixChanged = true;
 bool matrix[matrixSize][matrixSize] = {
@@ -84,12 +85,10 @@ byte gapLength;
 
 // Bird position
 byte birdRow = 4;
-const byte birdCol = 3;
+const byte birdCol = 1;
 
-// Time constants
-const int obstacleInterval = 1200;
-const int matrixUpdateInterval = 200;
-const int shiftInterval = 180;
+int obstacleInterval = 2200; // changes with difficulty
+int shiftInterval = 300;     // changes with difficulty
 const int birdFlapInterval = 100;
 const int birdFallInterval = 200;
 const int collisionBlinkInterval = 200;
@@ -108,8 +107,8 @@ bool countdownStarted = false;
 
 const int buzzerPin = 13;
 
-unsigned long score = 0; // score increases with each obstacle
-
+unsigned int score = 0; // score increases with each obstacle
+unsigned int lastScore = 0;
 
 /****** LEADERBOARD ******/
 
@@ -162,7 +161,6 @@ bool joyMovedSettings = false;
 bool joyMovedIntensity = false;
 bool showSettings = true;
 
-int lastMatrixBrightness;
 
 void setup() {
   Serial.begin(9600);
@@ -200,7 +198,6 @@ void loop() {
   }
   // analogWrite(contrastPin, 90);
 }
-
 
 # pragma region MENU
 
@@ -386,6 +383,7 @@ void handlePlay() {
     handleBirdMovement();  // moves the bird vertically
     handleMapMovement();   // moves the map (aka bird pov) to the left and increases the current score
     checkCollision();      // ends the game if the bird hit an obstacle
+    increaseDifficulty();
     showLiveScore();       // displays a live score on the lcd
   }
   if (gameOver) {
@@ -669,6 +667,18 @@ int getLeaderboardPosition(int score) {
 
 # pragma region GAME LOGIC
 
+void increaseDifficulty() {
+  if (score != lastScore) {
+    if (score % 2) {
+      obstacleInterval -= 85;  // make obstacles more dense
+    }
+    if (score % 3) {
+      shiftInterval -= 10;  // speed up the gameplay
+    }
+    lastScore = score;
+  }
+}
+
 void resetGame() {
   // reset map
   for (int i = 0; i < matrixSize; i++) {
@@ -680,6 +690,9 @@ void resetGame() {
   birdRow = 4;
   // reset score
   score = 0;
+  // reset difficulty variables
+  obstacleInterval = 2200;
+  shiftInterval = 300;    
 }
 
 void registerScore() {
