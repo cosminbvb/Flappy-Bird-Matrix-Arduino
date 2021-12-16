@@ -135,6 +135,7 @@ bool joyMovedPositionSelection = false;
 
 
 /****** MENU ******/
+const int welcomeMessageDuration = 3000;
 
 const String menu[4] = {"Play", "Highscore", "Settings", "About"};
 int menuIndex = 0;     // index of the displayed option
@@ -188,15 +189,21 @@ void setup() {
 }
 
 void loop() {
-  // if nameEntered == false => wait for the user to enter a name
-  // Serial.println(nameEntered);
-  if (!nameEntered) {
-    getPlayerName();
+  if (millis() < welcomeMessageDuration) {
+    lcd.setCursor(0, 0);
+    lcd.print(" Welcome To LED ");
+    lcd.setCursor(0, 1);
+    lcd.print("  Flappy Bird");
   }
   else {
-    handleMenu();
+    // if nameEntered == false => wait for the user to enter a name
+    if (!nameEntered) {
+      getPlayerName();
+    }
+    else {
+      handleMenu();
+    }
   }
-  // analogWrite(contrastPin, 90);
 }
 
 # pragma region MENU

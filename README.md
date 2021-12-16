@@ -23,15 +23,34 @@ This option allows you to adjust the LED Matrix Brightness, LCD Contrast and Bri
 ## **About**
 This section displays the name of the project, the author and the github username using a horizontal scrolling text.
 
+## Requirements
+
+<details>
+
+* 8x8 LED Matrix
+* MAX7219 Driver
+* 16x2 LCD 
+* Joystick
+* Buzzer (optional)
+* Button (optional - you can also use the button on the joystick)
+* All the wires available in your country
+* Resistors (330Ω for Backlight Anode and 10kΩ for driver pin 18)
+* Capacitors (we use the capacitors to filter circuit noise)
+    * 1 electrolytic capacitor of 10 μF
+    * 1 ceramic capacitor of 104 pF
+
+
+</details>
+
 ## Setup Pictures
 
 ### Week 1
 
 <details>
 
-![](https://github.com/cosminbvb/Flappy-Bird-Matrix-Arduino/blob/main/images/setup0.jpeg)
-![](https://github.com/cosminbvb/Flappy-Bird-Matrix-Arduino/blob/main/images/setup1.jpeg)
-![](https://github.com/cosminbvb/Flappy-Bird-Matrix-Arduino/blob/main/images/setup3.jpeg)
+![](https://github.com/cosminbvb/Flappy-Bird-Matrix-Arduino/blob/main/images/setup0week1.jpeg)
+![](https://github.com/cosminbvb/Flappy-Bird-Matrix-Arduino/blob/main/images/setup1week1.jpeg)
+![](https://github.com/cosminbvb/Flappy-Bird-Matrix-Arduino/blob/main/images/setup2week1.jpeg)
 
 </details>
 
@@ -39,6 +58,7 @@ This section displays the name of the project, the author and the github usernam
 
 <details>
 
-To do.
+![](https://github.com/cosminbvb/Flappy-Bird-Matrix-Arduino/blob/main/images/setup0week2.jpeg)
+![](https://github.com/cosminbvb/Flappy-Bird-Matrix-Arduino/blob/main/images/setup1week2.jpeg)
 
 </details>
