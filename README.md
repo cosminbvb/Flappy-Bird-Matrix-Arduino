@@ -67,7 +67,6 @@ This section displays the name of the project, the author and the github usernam
 
 TODO:
 * obstacle tunnel
-* display name while playing
-* modify increase step ul and limit settings values
+* modify increase step and limit settings values
 * master comment
 

@@ -222,7 +222,7 @@ void getPlayerName() {
   lcd.print("Name: ");
   selectLetterPosition();
   selectLetter();
-  for (int i = 0; i < 9; i++) {
+  for (int i = 0; i <= 9; i++) {
     lcd.setCursor(i + 6, 0);
     lcd.print(playerName[i]);
   }
@@ -831,8 +831,14 @@ void registerScore() {
 
 void showLiveScore() {
   lcd.setCursor(0, 0);
+  lcd.print("Name:");
+  for (int i = 0; i < 10; i++) {
+    lcd.setCursor(i + 6, 0);
+    lcd.print(player.name[i]);
+  }
+  lcd.setCursor(0, 1);
   lcd.print("Score:");
-  lcd.setCursor(7, 0);
+  lcd.setCursor(7, 1);
   lcd.print(score);
 }
 
