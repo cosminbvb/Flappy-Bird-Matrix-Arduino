@@ -179,13 +179,16 @@ void setup() {
   pinMode(lcdContrastPin, OUTPUT);
   pinMode(lcdBrightnessPin, OUTPUT);
 
+  getSettingsFromEEPROM();
+  getLeaderboardFromEEPROM();       // read the top 3 players from memory
+
   analogWrite(lcdContrastPin, lcdContrast);
   analogWrite(lcdBrightnessPin, lcdBrightness);
 
   lcd.begin(16, 2); // set up the LCD's number of columns and rows:
 
   // initializeLeaderboardEEPROM(); // TODO: initialize if empty
-  getLeaderboardFromEEPROM();       // read the top 3 players from memory
+  // initializeSettingsEEPROM();    // TODO: initialize if empty
 }
 
 void loop() {
@@ -362,8 +365,7 @@ void handlePlay() {
     // if the game is not running
     // and we don't have any post game processing to do (gameOver == false)
 
-    if (!countdownStarted)
-    {
+    if (!countdownStarted) {
       // starting a 3 second countdown
       countdownStartTime = millis();
       countdownStarted = true;
@@ -479,6 +481,7 @@ void handleSettings() {
   }
   switch (settingsIndex) {
     case 0:
+    {
       for (int row = 0; row < matrixSize; row++) {
         for (int col = 0; col < matrixSize; col++) {
           lc.setLed(0, row, col, 1);
@@ -486,27 +489,38 @@ void handleSettings() {
       }
       handleSettingsHorizontalMovement(matrixBrightness, 15, 1);
       lc.setIntensity(0, matrixBrightness);
+      int addrMatrixBrightness = sizeof(Player) * 4;
+      EEPROM.put(addrMatrixBrightness, matrixBrightness);
       lcd.setCursor(6, 1);
       lcd.print("<");
       lcd.print(matrixBrightness);
       lcd.print(">");
       break;
+    }
     case 1:
+    {
       handleSettingsHorizontalMovement(lcdContrast, 255, 10);
       analogWrite(lcdContrastPin, lcdContrast);
+      int addrLcdContrast = sizeof(Player) * 4 + sizeof(int);
+      EEPROM.put(addrLcdContrast, lcdContrast);
       lcd.setCursor(6, 1);
       lcd.print("<");
       lcd.print(lcdContrast);
       lcd.print(">");
       break;
+    }
     case 2:
+    {
       handleSettingsHorizontalMovement(lcdBrightness, 255, 30);
       analogWrite(lcdBrightnessPin, lcdBrightness);
+      int addrLcdBrightnes = sizeof(Player) * 4 + 2 * sizeof(int);
+      EEPROM.put(addrLcdBrightnes, lcdBrightness);
       lcd.setCursor(6, 1);
       lcd.print("<");
       lcd.print(lcdBrightness);
       lcd.print(">");
       break;
+    }
   }
   handleSettingsVerticalMovement();
   backToMenu();
@@ -569,6 +583,15 @@ void handleSettingsHorizontalMovement(int &intensity, int maxIntensity, int step
   } 
 }
 
+void getSettingsFromEEPROM() {
+  int addr = sizeof(Player) * 4;
+  EEPROM.get(addr, matrixBrightness);
+  addr += sizeof(int);
+  EEPROM.get(addr, lcdContrast);
+  addr += sizeof(int);
+  EEPROM.get(addr, lcdBrightness);
+}
+
 void handleAbout() {
   if ((millis() - lastAboutShiftTime) > aboutShiftInterval) {
     lcd.setCursor(0, 0);
@@ -626,7 +649,7 @@ void backToMenu() {
 
 # pragma endregion
 
-# pragma region LEADERBOARD
+# pragma region CONSISTENCY (LEADERBOARD AND SETTINGS)
 
 /*
   void initializeLeaderboardEEPROM() {
@@ -638,6 +661,17 @@ void backToMenu() {
     eepromAddress += sizeof(Player);
   }
   }
+*/
+
+/*
+void initializeSettingsEEPROM() {
+  int addr = sizeof(Player) * 4;
+  EEPROM.put(addr, 2);
+  addr += sizeof(int);
+  EEPROM.put(addr, 90);
+  addr += sizeof(int);
+  EEPROM.put(addr, 128);
+}
 */
 
 void getLeaderboardFromEEPROM() {
