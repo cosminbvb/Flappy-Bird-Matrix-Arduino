@@ -7,6 +7,7 @@ When the game starts, you are asked to enter your name by using the joystick (ca
     * LED Matrix Brightness
     * LCD Contrast
     * LCD Brightness (Backlight)
+    * Sound Effects (On / Off)
 * About (displays the name of the project, the author and the github username)
 
 **To choose an option or to return to the main menu, press down on the joystick.**
@@ -18,7 +19,7 @@ When choosing **Play**, a countdown of 3 seconds will start on the matrix. At th
 The top 3 players and their corresponding names and scores are stored in the EEPROM and displayed in this section. **To browse the leadeboard, move the joystick vertically.**
 
 ## **Settings**
-This option allows you to adjust the LED Matrix Brightness, LCD Contrast and Brightness. **To browse between settings, move the joystick vertically. To adjust one of them, move the joystick horizontally**.
+This option allows you to adjust the LED Matrix Brightness, the LCD Contrast and the LCD Brightness and to turn the Sound Effect On/Off. The settings are stored in the EEPROM.**To browse between settings, move the joystick vertically. To adjust one of them, move the joystick horizontally**.
 
 ## **About**
 This section displays the name of the project, the author and the github username using a horizontal scrolling text.
@@ -62,3 +63,11 @@ This section displays the name of the project, the author and the github usernam
 ![](https://github.com/cosminbvb/Flappy-Bird-Matrix-Arduino/blob/main/images/setup1week2.jpeg)
 
 </details>
+
+
+TODO:
+* obstacle tunnel
+* display name while playing
+* modify increase step ul and limit settings values
+* master comment
+

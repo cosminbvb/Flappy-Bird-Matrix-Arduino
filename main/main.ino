@@ -106,6 +106,7 @@ bool blinkState;
 bool countdownStarted = false;
 
 const int buzzerPin = 13;
+bool soundEffects = true;
 
 unsigned int score = 0; // score increases with each obstacle
 unsigned int lastScore = 0;
@@ -157,9 +158,10 @@ bool showHighscore = true;
 
 // settings section
 byte settingsIndex = 0;
-byte settingsMaxIndex = 2;
+byte settingsMaxIndex = 3;
 bool joyMovedSettings = false;
 bool joyMovedIntensity = false;
+bool joyMovedSound = false;
 bool showSettings = true;
 
 
@@ -167,7 +169,6 @@ void setup() {
   Serial.begin(9600);
   // the zero refers to the MAX7219 number, it is zero for 1 chip
   lc.shutdown(0, false);                // turn off power saving, enables display
-  lc.setIntensity(0, matrixBrightness); // sets brightness (0~15 possible values)
   lc.clearDisplay(0);                   // clear screen
 
   pinMode(randomPin, INPUT);
@@ -184,6 +185,7 @@ void setup() {
 
   analogWrite(lcdContrastPin, lcdContrast);
   analogWrite(lcdBrightnessPin, lcdBrightness);
+  lc.setIntensity(0, matrixBrightness); // sets brightness (0~15 possible values)
 
   lcd.begin(16, 2); // set up the LCD's number of columns and rows:
 
@@ -387,7 +389,9 @@ void handlePlay() {
     readFlap(); // button press listener
     if (registeredFlap) {
       flaps++;  // every time a user presses the button, we increase the number of queued flaps
-      tone(buzzerPin, 6000, 50);
+      if (soundEffects) {
+        tone(buzzerPin, 6000, 50);
+      }
     }
     handleBirdMovement();  // moves the bird vertically
     handleMapMovement();   // moves the map (aka bird pov) to the left and increases the current score
@@ -476,6 +480,9 @@ void handleSettings() {
       case 2:
         lcd.print("LCD Brightness");
         break;
+      case 3:
+        lcd.print("Sound Effects");
+        break;
     }
     showSettings = false;
   }
@@ -520,6 +527,21 @@ void handleSettings() {
       lcd.print(lcdBrightness);
       lcd.print(">");
       break;
+    }
+    case 3:
+    {
+      handleSoundSettingHorizontalMovement();
+      int addrSoundEffects = sizeof(Player) * 4 + 3 * sizeof(int);
+      EEPROM.put(addrSoundEffects, soundEffects);
+      lcd.setCursor(6, 1);
+      lcd.print("<");
+      if (soundEffects) {
+        lcd.print("On");
+      }
+      else {
+        lcd.print("Off");
+      }
+      lcd.print(">");
     }
   }
   handleSettingsVerticalMovement();
@@ -583,6 +605,18 @@ void handleSettingsHorizontalMovement(int &intensity, int maxIntensity, int step
   } 
 }
 
+void handleSoundSettingHorizontalMovement(){
+  yValue = analogRead(yPin);
+  if ((yValue < minThreshold || yValue > maxThreshold) && !joyMovedSound) {
+    soundEffects = !soundEffects;
+    joyMovedSound = true;
+    showSettings = true;
+  }
+  if (yValue >= minThreshold && yValue <= maxThreshold) {
+    joyMovedSound = false;
+  }
+}
+
 void getSettingsFromEEPROM() {
   int addr = sizeof(Player) * 4;
   EEPROM.get(addr, matrixBrightness);
@@ -590,6 +624,8 @@ void getSettingsFromEEPROM() {
   EEPROM.get(addr, lcdContrast);
   addr += sizeof(int);
   EEPROM.get(addr, lcdBrightness);
+  addr += sizeof(int);
+  EEPROM.get(addr, soundEffects);
 }
 
 void handleAbout() {
@@ -651,8 +687,7 @@ void backToMenu() {
 
 # pragma region CONSISTENCY (LEADERBOARD AND SETTINGS)
 
-/*
-  void initializeLeaderboardEEPROM() {
+void initializeLeaderboardEEPROM() {
   for (int i = 0; i < 3; i++) {
     Player player;
     strcpy(player.name, "Unknown");
@@ -660,10 +695,8 @@ void backToMenu() {
     EEPROM.put(eepromAddress, player);
     eepromAddress += sizeof(Player);
   }
-  }
-*/
+}
 
-/*
 void initializeSettingsEEPROM() {
   int addr = sizeof(Player) * 4;
   EEPROM.put(addr, 2);
@@ -671,8 +704,9 @@ void initializeSettingsEEPROM() {
   EEPROM.put(addr, 90);
   addr += sizeof(int);
   EEPROM.put(addr, 128);
+  addr += sizeof(int);
+  EEPROM.put(addr, true);
 }
-*/
 
 void getLeaderboardFromEEPROM() {
   for (int i = 0; i < 3; i++) {
