@@ -125,7 +125,7 @@ Player leaderboard[3]; // top 3 players
 int eepromAddress = 0;
 
 // Enter Name Prompt
-int letter = 122;
+int letter = 123;
 int letterPosition = 0;
 char playerName[10] = {'_', '_', '_', '_', '_', '_', '_', '_', '_', '_'};
 bool nameEntered = false;
@@ -280,7 +280,12 @@ void selectLetterPosition() {
     else {
       letterPosition = 9;
     }
-    letter = 97;
+    if (playerName[letterPosition] == '_') {
+      letter = 123;  // reset letter
+    }
+    else {
+      letter = (int)playerName[letterPosition];
+    }
     joyMovedPositionSelection = true;
   }
   if (yValue > maxThreshold && !joyMovedPositionSelection) {
@@ -290,7 +295,12 @@ void selectLetterPosition() {
     else {
       letterPosition = 0;
     }
-    letter = 97;
+    if (playerName[letterPosition] == '_') {
+      letter = 123;  // reset letter
+    }
+    else {
+      letter = (int)playerName[letterPosition];
+    }
     joyMovedPositionSelection = true;
   }
 
