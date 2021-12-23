@@ -59,7 +59,7 @@ This option allows you to adjust the LED Matrix Brightness, the LCD Contrast and
 This section displays the name of the project, the author and the github username using a horizontal scrolling text.
 
 
-<a name="game"/>
+<a name="gameplay"/>
 
 ## Understanding the game
 
@@ -79,6 +79,16 @@ Obstacles are glued together, creating the image of a tunnel of obstacles. Here,
 ![](https://github.com/cosminbvb/Flappy-Bird-Matrix-Arduino/blob/main/images/setup1week2.jpeg)
 
 
+Driver <-> Arduino Connection
+
+![](https://github.com/cosminbvb/Flappy-Bird-Matrix-Arduino/blob/main/images/driver_to_arduino.png)
+
+Matrix <-> Driver Connection
+
+![](https://github.com/cosminbvb/Flappy-Bird-Matrix-Arduino/blob/main/images/matrix_to_driver.png)
+![](https://github.com/cosminbvb/Flappy-Bird-Matrix-Arduino/blob/main/images/matrix_table_0.png)
+![](https://github.com/cosminbvb/Flappy-Bird-Matrix-Arduino/blob/main/images/matrix_table_1.png)
+
 <a name="next"/>
 
 ### Issues
@@ -89,3 +99,4 @@ Obstacles are glued together, creating the image of a tunnel of obstacles. Here,
 
 * Produce and add the cinematic masterpiece
 * Add a master comment
+* Refactor and cleanup
