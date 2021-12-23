@@ -83,8 +83,8 @@ Obstacles are glued together, creating the image of a tunnel of obstacles. Here,
 
 ## Setup Photos and Wiring Diagrams
 
-![](https://github.com/cosminbvb/Flappy-Bird-Matrix-Arduino/blob/main/images/setup0week2.jpeg)
-![](https://github.com/cosminbvb/Flappy-Bird-Matrix-Arduino/blob/main/images/setup1week2.jpeg)
+![](https://github.com/cosminbvb/Flappy-Bird-Matrix-Arduino/blob/main/images/setup0.jpeg)
+![](https://github.com/cosminbvb/Flappy-Bird-Matrix-Arduino/blob/main/images/setup1.jpeg)
 
 
 Driver <-> Arduino Connection
