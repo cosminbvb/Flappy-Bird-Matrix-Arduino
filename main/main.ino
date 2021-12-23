@@ -404,66 +404,6 @@ void handleMenuClick() {
   }
 }
 
-void handlePlay() {
-  if (!runningGame && !gameOver) {
-    // if the game is not running
-    // and we don't have any post game processing to do (gameOver == false)
-
-    if (!countdownStarted) {
-      // starting a 3 second countdown
-      countdownStartTime = millis();
-      countdownStarted = true;
-    }
-    if (millis() - countdownStartTime < 3000) {
-      // display the countdown on the matrix
-      displayCountdown();
-    }
-    else {
-      // when the countdown is over, start the game
-      countdownStarted = false;
-      runningGame = true;
-      lc.setLed(0, birdRow, birdCol, true);  // display bird
-    }
-  }
-  if (runningGame && !gameOver) {
-    // if the game is running 
-    // and we don't have any post game processing to do (gameOver == false)
-    readFlap(); // button press listener
-    if (registeredFlap) {
-      flaps++;  // every time a user presses the button, we increase the number of queued flaps
-      if (soundEffects) {
-        tone(buzzerPin, 6000, 50);
-      }
-    }
-    handleBirdMovement();  // moves the bird vertically
-    if (phase == 1) {
-      handleMapMovementPhase1();   // moves the map (aka bird pov) to the left and increases the current score
-    }
-    else {
-      handleMapMovementPhase2();
-    }
-    increaseDifficulty();
-    checkCollision();      // ends the game if the bird hit an obstacle
-    showLiveScore();       // displays a live score on the lcd
-  }
-  if (gameOver) {
-    // if gameOver == true, the game just ended, meaning that
-    // we need to show a crash animation for a few seconds and then
-    // analize the score, store it and display the position he finished in
-    if (millis() - gameOverTime < gameOverAnimationDuration) {
-      collisionAnimation();
-    }
-    else {
-      if (!registeredScore) {
-        // registering only once
-        registerScore(); // TODO: split into store and show
-      }
-      resetGame();   // reset map, bird and score
-      backToMenu();  // if the user presses down on the joystick, we return him to the menu
-    }
-  }
-}
-
 void handleHighscore() {
   if (joyMovedHighscore) {
     lcd.clear();
@@ -507,6 +447,26 @@ void handleHighscoreVerticalMovement() {
 
   if (xValue >= minThreshold && xValue <= maxThreshold) {
     joyMovedHighscore = false;
+  }
+}
+
+int getLeaderboardPosition(int score) {
+  // compares the given score with the top 3 scores
+  if (score <= leaderboard[2].score) {
+    // not in top 3
+    return -1;
+  }
+  else if (score > leaderboard[0].score) {
+    // first place
+    return 0;
+  }
+  else if (score > leaderboard[1].score) {
+    // second place
+    return 1;
+  }
+  else {
+    // third place
+    return 2;
   }
 }
 
@@ -659,17 +619,6 @@ void handleSoundSettingHorizontalMovement(){
   if (yValue >= minThreshold && yValue <= maxThreshold) {
     joyMovedSound = false;
   }
-}
-
-void getSettingsFromEEPROM() {
-  int addr = sizeof(Player) * 4;
-  EEPROM.get(addr, matrixBrightness);
-  addr += sizeof(int);
-  EEPROM.get(addr, lcdContrast);
-  addr += sizeof(int);
-  EEPROM.get(addr, lcdBrightness);
-  addr += sizeof(int);
-  EEPROM.get(addr, soundEffects);
 }
 
 void handleAbout() {
@@ -836,29 +785,80 @@ void getLeaderboardFromEEPROM() {
   eepromAddress = 0;
 }
 
-int getLeaderboardPosition(int score) {
-  // compares the given score with the top 3 scores
-  if (score <= leaderboard[2].score) {
-    // not in top 3
-    return -1;
-  }
-  else if (score > leaderboard[0].score) {
-    // first place
-    return 0;
-  }
-  else if (score > leaderboard[1].score) {
-    // second place
-    return 1;
-  }
-  else {
-    // third place
-    return 2;
-  }
+void getSettingsFromEEPROM() {
+  int addr = sizeof(Player) * 4;
+  EEPROM.get(addr, matrixBrightness);
+  addr += sizeof(int);
+  EEPROM.get(addr, lcdContrast);
+  addr += sizeof(int);
+  EEPROM.get(addr, lcdBrightness);
+  addr += sizeof(int);
+  EEPROM.get(addr, soundEffects);
 }
 
 # pragma endregion
 
-# pragma region GAME LOGIC
+# pragma region GAMEPLAY
+
+void handlePlay() {
+  if (!runningGame && !gameOver) {
+    // if the game is not running
+    // and we don't have any post game processing to do (gameOver == false)
+
+    if (!countdownStarted) {
+      // starting a 3 second countdown
+      countdownStartTime = millis();
+      countdownStarted = true;
+    }
+    if (millis() - countdownStartTime < 3000) {
+      // display the countdown on the matrix
+      displayCountdown();
+    }
+    else {
+      // when the countdown is over, start the game
+      countdownStarted = false;
+      runningGame = true;
+      lc.setLed(0, birdRow, birdCol, true);  // display bird
+    }
+  }
+  if (runningGame && !gameOver) {
+    // if the game is running 
+    // and we don't have any post game processing to do (gameOver == false)
+    readFlap(); // button press listener
+    if (registeredFlap) {
+      flaps++;  // every time a user presses the button, we increase the number of queued flaps
+      if (soundEffects) {
+        tone(buzzerPin, 6000, 50);
+      }
+    }
+    handleBirdMovement();  // moves the bird vertically
+    if (phase == 1) {
+      handleMapMovementPhase1();   // moves the map (aka bird pov) to the left and increases the current score
+    }
+    else {
+      handleMapMovementPhase2();
+    }
+    increaseDifficulty();
+    checkCollision();      // ends the game if the bird hit an obstacle
+    showLiveScore();       // displays a live score on the lcd
+  }
+  if (gameOver) {
+    // if gameOver == true, the game just ended, meaning that
+    // we need to show a crash animation for a few seconds and then
+    // analize the score, store it and display the position he finished in
+    if (millis() - gameOverTime < gameOverAnimationDuration) {
+      collisionAnimation();
+    }
+    else {
+      if (!registeredScore) {
+        // registering only once
+        registerScore(); // TODO: split into store and show
+      }
+      resetGame();   // reset map, bird and score
+      backToMenu();  // if the user presses down on the joystick, we return him to the menu
+    }
+  }
+}
 
 void increaseDifficulty() {
   if (phase == 1) {

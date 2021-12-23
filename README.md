@@ -110,6 +110,5 @@ You can watch a quick demo [here](https://www.youtube.com/watch?v=VWjmkaziLCA).
 
 ### TODO
 
-* Produce and add the cinematic masterpiece
 * Add a master comment
 * Refactor and cleanup
