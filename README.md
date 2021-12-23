@@ -7,7 +7,8 @@ Was flappy bird not frustrating enough already? Have you ever wanted to play fla
 * [Requirements](#req)
 * [Understanding the menu](#menu)
 * [Understanding the game](#gameplay)
-* [Setup Photos & Video](#setup)
+* [Setup Photos & Wiring Diagrams](#setup)
+* [Demo](#demo)
 * [Issues and TODO List](#next)
 
 <a name="req"/>
@@ -80,7 +81,7 @@ Obstacles are glued together, creating the image of a tunnel of obstacles. Here,
  
 <a name="setup"/>
 
-## Setup Pictures and Video
+## Setup Photos and Wiring Diagrams
 
 ![](https://github.com/cosminbvb/Flappy-Bird-Matrix-Arduino/blob/main/images/setup0week2.jpeg)
 ![](https://github.com/cosminbvb/Flappy-Bird-Matrix-Arduino/blob/main/images/setup1week2.jpeg)
@@ -95,6 +96,11 @@ Matrix <-> Driver Connection
 ![](https://github.com/cosminbvb/Flappy-Bird-Matrix-Arduino/blob/main/images/matrix_to_driver.png)
 ![](https://github.com/cosminbvb/Flappy-Bird-Matrix-Arduino/blob/main/images/matrix_table_0.png)
 ![](https://github.com/cosminbvb/Flappy-Bird-Matrix-Arduino/blob/main/images/matrix_table_1.png)
+
+<a name="demo"/>
+
+## Demo
+You can watch a quick demo [here](https://www.youtube.com/watch?v=VWjmkaziLCA).
 
 <a name="next"/>
 
