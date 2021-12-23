@@ -64,12 +64,15 @@ LiquidCrystal lcd(RS, enable, d4, d5, d6, d7);
 
 
 /****** GAME LOGIC ******/
+byte phase = 1;
 
 bool runningGame = false;
 bool gameOver = false;
 
+int phaseThreshold = 10; // score threshold for phase switching
+
 // Flap mechanic
-const byte flapButtonPin = A5;
+const byte flapButtonPin = A2;
 bool buttonState;
 bool lastButtonState;
 bool reading;
@@ -80,15 +83,26 @@ const byte flapHeight = 2;
 
 // Obstacle generation
 const int randomPin = A3; // we use this pin to read noise values in order to add to the randomness of the prng
+
+// used for phase 1
 byte gapStart;
 byte gapLength;
+
+// used for phase 2
+byte y1 = 2;  // first height coordinate of the obstacle
+byte y2 = 7;  // second -//-
+byte lastY1 = 2;
+byte lastY2 = 7;
 
 // Bird position
 byte birdRow = 4;
 const byte birdCol = 1;
 
-int obstacleInterval = 2200; // changes with difficulty
-int shiftInterval = 300;     // changes with difficulty
+const int obstacleInterval = 2200; 
+int shiftInterval = 330;     // changes with difficulty
+int shiftIntervalPhase2 = 300;
+const int newObstacleIntervalPhase2 = 800;
+const int scoreUpdateIntervalPhase2 = 1000;
 const int birdFlapInterval = 100;
 const int birdFallInterval = 200;
 const int collisionBlinkInterval = 200;
@@ -99,7 +113,8 @@ unsigned long long lastShiftTime;
 unsigned long long lastBirdMove;
 unsigned long long lastBlinkTime;
 unsigned long long gameOverTime;
-unsigned long countdownStartTime;
+unsigned long long countdownStartTime;
+unsigned long long lastScoreUpdatePhase2;
 
 // Collision blinking
 bool blinkState;
@@ -110,6 +125,7 @@ bool soundEffects = true;
 
 unsigned int score = 0; // score increases with each obstacle
 unsigned int lastScore = 0;
+bool scoreChanged = true;
 
 /****** LEADERBOARD ******/
 
@@ -312,7 +328,24 @@ void selectLetterPosition() {
 void handleMenu() {
   if (joyMoved) {
     lcd.clear();
+    lcd.setCursor(0, 0);
+    lcd.print(">");
+    lcd.setCursor(1, 0);
     lcd.print(menu[menuIndex]);
+    lcd.setCursor(1, 1);
+    lcd.print(menu[(menuIndex + 1) % 4]);
+    if (menuIndex == 0) {
+      displayPlayIcon();
+    }
+    else if (menuIndex == 1) {
+      displayLeaderboardIcon();
+    }
+    else if (menuIndex == 2) {
+      displaySettingsIcon();
+    }
+    else {
+      displayAboutIcon();
+    }
   }
   if (!goToOption) {
     // only listen for vertical menu movement when
@@ -404,9 +437,14 @@ void handlePlay() {
       }
     }
     handleBirdMovement();  // moves the bird vertically
-    handleMapMovement();   // moves the map (aka bird pov) to the left and increases the current score
-    checkCollision();      // ends the game if the bird hit an obstacle
+    if (phase == 1) {
+      handleMapMovementPhase1();   // moves the map (aka bird pov) to the left and increases the current score
+    }
+    else {
+      handleMapMovementPhase2();
+    }
     increaseDifficulty();
+    checkCollision();      // ends the game if the bird hit an obstacle
     showLiveScore();       // displays a live score on the lcd
   }
   if (gameOver) {
@@ -667,6 +705,7 @@ void readJoystickSw(bool &pressed) {
     if (reading != swState) {
       swState = reading;
       if (swState == HIGH) {
+        // lcd.clear();
         pressed = true;
       }
     }
@@ -682,15 +721,88 @@ void backToMenu() {
   readJoystickSw(goToMenu);
   if (goToMenu) {
     goToOption = false;         // menu option satisfied
-    lcd.clear();                
+    lcd.clear();
     lcd.setCursor(0, 0);
+    lcd.print(">");
+    lcd.setCursor(1, 0);
     lcd.print(menu[menuIndex]); // display the current menu option
+    lcd.setCursor(1, 1);
+    lcd.print(menu[(menuIndex + 1) % 4]);
     gameOver = false;           // mark post game processing as done
     goToMenu = false;           // back to menu command completed
     registeredScore = false;    // reset the flag for the next game
     showHighscore = true;       // reset the flag for the next highscore access
     showSettings = true;        // reset the flag for the next settings acess
+    // display the icons:
+    if (menuIndex == 0) {
+      displayPlayIcon();
+    }
+    else if (menuIndex == 1) {
+      displayLeaderboardIcon();
+    }
+    else if (menuIndex == 2) {
+      displaySettingsIcon();
+    }
+    else {
+      displayAboutIcon();
+    }
   }
+}
+
+void displaySettingsIcon() {
+  bool settingsAnimation[matrixSize][matrixSize] = {
+    {0, 0, 1, 0, 0, 1, 0, 0},
+    {0, 1, 1, 0, 0, 1, 1, 0},
+    {1, 1, 1, 0, 0, 1, 1, 1},
+    {1, 1, 1, 1, 1, 1, 1, 1},
+    {0, 1, 1, 1, 1, 1, 1, 0},
+    {0, 0, 1, 1, 1, 1, 0, 0},
+    {0, 0, 0, 1, 1, 0, 0, 0},
+    {0, 0, 0, 1, 1, 0, 0, 0}
+  };
+  writeMatrix(settingsAnimation);
+}
+
+void displayPlayIcon() {
+  bool playAnimation[matrixSize][matrixSize] = {
+    {0, 1, 1, 1, 0, 0, 0, 0},
+    {0, 1, 1, 1, 1, 0, 0, 0},
+    {0, 1, 1, 1, 1, 1, 0, 0},
+    {0, 1, 1, 1, 1, 1, 1, 0},
+    {0, 1, 1, 1, 1, 1, 1, 0},
+    {0, 1, 1, 1, 1, 1, 0, 0},
+    {0, 1, 1, 1, 1, 0, 0, 0},
+    {0, 1, 1, 1, 0, 0, 0, 0}
+  };
+  writeMatrix(playAnimation);
+}
+
+void displayLeaderboardIcon() {
+  bool leaderboardAnimation[matrixSize][matrixSize] = {
+    {0, 0, 0, 0, 0, 0, 0, 0},
+    {0, 0, 1, 1, 1, 0, 0, 0},
+    {0, 0, 1, 0, 1, 0, 0, 0},
+    {0, 0, 1, 0, 1, 1, 1, 1},
+    {0, 0, 1, 0, 1, 1, 0, 1},
+    {1, 1, 1, 0, 1, 1, 0, 1},
+    {1, 0, 1, 0, 1, 1, 0, 1},
+    {1, 1, 1, 0, 1, 1, 0, 1}
+  };
+  writeMatrix(leaderboardAnimation);
+}
+
+void displayAboutIcon() {
+  bool aboutAnimation[matrixSize][matrixSize] = {
+    {0, 0, 1, 1, 1, 1, 0, 0},
+    {0, 1, 1, 0, 0, 1, 1, 0},
+    {0, 1, 1, 0, 0, 1, 1, 0},
+    {0, 1, 1, 0, 0, 1, 1, 0},
+    {0, 0, 0, 0, 1, 1, 0, 0},
+    {0, 0, 0, 0, 1, 1, 0, 0},
+    {0, 0, 0, 0, 0, 0, 0, 0},
+    {0, 0, 0, 0, 1, 1, 0, 0}
+  };
+  writeMatrix(aboutAnimation);
 }
 
 # pragma endregion
@@ -753,15 +865,31 @@ int getLeaderboardPosition(int score) {
 # pragma region GAME LOGIC
 
 void increaseDifficulty() {
-  if (score != lastScore) {
-    if (score % 2) {
-      obstacleInterval -= 85;  // make obstacles more dense
+  if (phase == 1) {
+    if (score != lastScore) {
+      if (score % 3) {
+        shiftInterval -= 12;  // speed up the gameplay
+      }
+      lastScore = score;
+      if (score % phaseThreshold == 0) {
+        // switch phase
+        phase = 2;
+      }
     }
-    if (score % 3) {
-      shiftInterval -= 10;  // speed up the gameplay
-    }
-    lastScore = score;
   }
+  else {
+    if (score != lastScore) {
+      if (score % 3) {
+        shiftIntervalPhase2 -= 10;  // speed up the gameplay
+      }
+      lastScore = score;
+      if (score % phaseThreshold == 0) {
+        // switch phase
+        phase = 1;
+      }
+    }
+  }
+
 }
 
 void resetGame() {
@@ -775,9 +903,12 @@ void resetGame() {
   birdRow = 4;
   // reset score
   score = 0;
+  scoreChanged = true;
   // reset difficulty variables
-  obstacleInterval = 2200;
-  shiftInterval = 300;    
+  shiftInterval = 330;    
+  shiftIntervalPhase2 = 300;
+  // reset phase
+  phase = 1;
 }
 
 void registerScore() {
@@ -840,6 +971,10 @@ void registerScore() {
 }
 
 void showLiveScore() {
+  if (scoreChanged) {
+    lcd.clear();
+    scoreChanged = false;
+  }
   lcd.setCursor(0, 0);
   lcd.print("Name:");
   for (int i = 0; i < 10; i++) {
@@ -930,11 +1065,65 @@ void readFlap() {
   lastButtonState = reading;
 }
 
-void handleMapMovement() {
+void handleMapMovementPhase1() {
   generateObstacle();
   if (matrixChanged) {
     updateMatrix();
     matrixChanged = false;
+  }
+}
+
+void handleMapMovementPhase2() {
+  // shift matrix to the left every shiftInterval miliseconds
+  if (millis() - lastShiftTime > shiftIntervalPhase2) {
+    if (millis() - lastScoreUpdatePhase2 > scoreUpdateIntervalPhase2) {
+      score++;
+      scoreChanged = true;
+      lastScoreUpdatePhase2 = millis();
+    }
+    shiftMatrix();
+    // write the obstacle on the matrix
+    for (int i = 0; i < matrixSize; i++) {
+      if (i <= y1) {
+        matrix[i][matrixSize - 1] = 1;
+      }
+      else if (i >= y2) {
+        matrix[i][matrixSize - 1] = 1;
+      }
+      else {
+        matrix[i][matrixSize - 1] = 0;
+      }
+    }
+    
+    if (millis() - lastObstacleTime > newObstacleIntervalPhase2) {
+      // get the new obstacle configuration 
+      if (lastY2 == 7) {
+        // force the decrease of the tunnel height
+        y2--; 
+        y1--; 
+      }
+      if (lastY1 == 0) {
+        // for the increase of the tunnel height
+        y1++;
+        y2++; 
+      }
+      if (y1 == lastY1 && y2 == lastY2) {
+        // if no manual increase / decrease has been applied
+        // generate new coordinates
+        randomSeed(millis() + analogRead(randomPin));
+        byte updateOneOrTwo = random(1, 3);
+        randomSeed(millis() + analogRead(randomPin));
+        int update = random(-1, 2);
+        y1 += update;
+        y2 += update;
+      }
+      lastY1 = y1;
+      lastY2 = y2;
+      lastObstacleTime = millis();
+    }
+
+    updateMatrix();
+    lastShiftTime = millis();
   }
 }
 
@@ -965,6 +1154,7 @@ void generateObstacle() {
   // generate and add a new obstacle on the map every obstacleInterval miliseconds
   if (millis() - lastObstacleTime > obstacleInterval) {
     score++;
+    scoreChanged = true;
     getRandomObstacle();
     // set the column values of the obstacle (1 for obstacle, 0 for gap)
     for (int i = 0; i < matrixSize; i++) {
