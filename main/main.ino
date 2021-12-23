@@ -169,8 +169,7 @@ unsigned long lastAboutShiftTime;
 // highscore section
 byte highscoreIndex = 0;
 byte highscoreMaxIndex = 2;
-bool joyMovedHighscore = false;
-bool showHighscore = true;
+bool joyMovedHighscore = true;
 
 // settings section
 byte settingsIndex = 0;
@@ -466,7 +465,7 @@ void handlePlay() {
 }
 
 void handleHighscore() {
-  if (showHighscore) {
+  if (joyMovedHighscore) {
     lcd.clear();
     lcd.setCursor(0, 0);
     lcd.print(highscoreIndex + 1);
@@ -479,7 +478,6 @@ void handleHighscore() {
     lcd.print("Score: ");
     lcd.setCursor(10, 1);
     lcd.print(leaderboard[highscoreIndex].score);
-    showHighscore = false;
   }
   handleHighscoreVerticalMovement();
   backToMenu();
@@ -495,7 +493,6 @@ void handleHighscoreVerticalMovement() {
       highscoreIndex = highscoreMaxIndex;
     }
     joyMovedHighscore = true;
-    showHighscore = true;
   }
 
   if (xValue < minThreshold && !joyMovedHighscore) {
@@ -506,7 +503,6 @@ void handleHighscoreVerticalMovement() {
       highscoreIndex = 0;
     }
     joyMovedHighscore = true;
-    showHighscore = true;
   }
 
   if (xValue >= minThreshold && xValue <= maxThreshold) {
@@ -542,7 +538,7 @@ void handleSettings() {
           lc.setLed(0, row, col, 1);
         }
       }
-      handleSettingsHorizontalMovement(matrixBrightness, 15, 1);
+      handleSettingsHorizontalMovement(matrixBrightness, 0, 15, 1);
       lc.setIntensity(0, matrixBrightness);
       int addrMatrixBrightness = sizeof(Player) * 4;
       EEPROM.put(addrMatrixBrightness, matrixBrightness);
@@ -554,7 +550,7 @@ void handleSettings() {
     }
     case 1:
     {
-      handleSettingsHorizontalMovement(lcdContrast, 255, 10);
+      handleSettingsHorizontalMovement(lcdContrast, 20, 150, 10);
       analogWrite(lcdContrastPin, lcdContrast);
       int addrLcdContrast = sizeof(Player) * 4 + sizeof(int);
       EEPROM.put(addrLcdContrast, lcdContrast);
@@ -566,7 +562,7 @@ void handleSettings() {
     }
     case 2:
     {
-      handleSettingsHorizontalMovement(lcdBrightness, 255, 30);
+      handleSettingsHorizontalMovement(lcdBrightness, 30, 255, 25);
       analogWrite(lcdBrightnessPin, lcdBrightness);
       int addrLcdBrightnes = sizeof(Player) * 4 + 2 * sizeof(int);
       EEPROM.put(addrLcdBrightnes, lcdBrightness);
@@ -625,10 +621,10 @@ void handleSettingsVerticalMovement() {
   }
 }
 
-void handleSettingsHorizontalMovement(int &intensity, int maxIntensity, int step) {
+void handleSettingsHorizontalMovement(int &intensity, int minIntensity, int maxIntensity, int step) {
   yValue = analogRead(yPin);
   if (yValue < minThreshold && !joyMovedIntensity) {
-    if (intensity >= step) {
+    if (intensity >= 2 * minIntensity) {
       intensity -= step;
     }
     else {
@@ -642,7 +638,7 @@ void handleSettingsHorizontalMovement(int &intensity, int maxIntensity, int step
       intensity += step;
     }
     else {
-      intensity = 0;
+      intensity = minIntensity;
     }
     joyMovedIntensity = true;
     showSettings = true;
@@ -731,7 +727,7 @@ void backToMenu() {
     gameOver = false;           // mark post game processing as done
     goToMenu = false;           // back to menu command completed
     registeredScore = false;    // reset the flag for the next game
-    showHighscore = true;       // reset the flag for the next highscore access
+    joyMovedHighscore = true;       // reset the flag for the next highscore access
     showSettings = true;        // reset the flag for the next settings acess
     // display the icons:
     if (menuIndex == 0) {
