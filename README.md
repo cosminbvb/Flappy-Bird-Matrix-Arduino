@@ -100,15 +100,17 @@ Matrix <-> Driver Connection
 <a name="demo"/>
 
 ## Demo
-You can watch a quick demo [here](https://www.youtube.com/watch?v=VWjmkaziLCA).
-
+[Menu and Gameplay](https://www.youtube.com/watch?v=VWjmkaziLCA).
+[Top 3 Finish](https://youtu.be/h8Y_Cr2wWGs)
 <a name="next"/>
 
 ### Issues
 
-* Flap button noise
+* **1. Absence of smooth phase switching mechanism**
+* 2. Flap button noise
 
 ### TODO
 
+* **Fix issue 1 - start the next phase after a little pause**
 * Add a master comment
 * Refactor and cleanup
