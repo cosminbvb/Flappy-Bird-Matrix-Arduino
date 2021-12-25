@@ -100,14 +100,15 @@ Matrix <-> Driver Connection
 <a name="demo"/>
 
 ## Demo
-[Menu and Gameplay](https://www.youtube.com/watch?v=VWjmkaziLCA).
-[Top 3 Finish](https://youtu.be/h8Y_Cr2wWGs)
+* [Menu and Gameplay](https://www.youtube.com/watch?v=VWjmkaziLCA)
+
+* [Top 3 Finish](https://youtu.be/h8Y_Cr2wWGs)
 <a name="next"/>
 
 ### Issues
 
-* **1. Absence of smooth phase switching mechanism**
-* 2. Flap button noise
+1. **Absence of smooth phase switching mechanism**
+2. Flap button noise
 
 ### TODO
 
